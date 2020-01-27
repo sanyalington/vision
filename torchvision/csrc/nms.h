@@ -12,7 +12,11 @@ at::Tensor nms(
   if (dets.device().is_cuda()) {
 #ifdef WITH_CUDA
     if (dets.numel() == 0) {
+#ifdef WITH_HIP
+      at::hip::HIPGuardMasqueradingAsCUDA device_guard(dets.device());
+#else
       at::cuda::CUDAGuard device_guard(dets.device());
+#endif
       return at::empty({0}, dets.options().dtype(at::kLong));
     }
     return nms_cuda(dets, scores, iou_threshold);

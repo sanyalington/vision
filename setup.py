@@ -12,7 +12,7 @@ import glob
 import shutil
 
 import torch
-from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension, CUDA_HOME
+from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension, CUDA_HOME, HIP_COMP
 
 
 def read(*names, **kwargs):
@@ -84,6 +84,8 @@ def get_extensions():
     main_file = glob.glob(os.path.join(extensions_dir, '*.cpp'))
     source_cpu = glob.glob(os.path.join(extensions_dir, 'cpu', '*.cpp'))
     source_cuda = glob.glob(os.path.join(extensions_dir, 'cuda', '*.cu'))
+    source_hip = glob.glob(os.path.join(extensions_dir, 'cuda', '*.hip'))
+    print('hip comp', HIP_COMP, CUDA_HOME, source_hip)
 
     sources = main_file + source_cpu
     extension = CppExtension
@@ -105,16 +107,24 @@ def get_extensions():
     extra_compile_args = {}
     if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv('FORCE_CUDA', '0') == '1':
         extension = CUDAExtension
-        sources += source_cuda
+        if HIP_COMP:
+            sources += source_hip
+        else:
+            sources += source_cuda
         define_macros += [('WITH_CUDA', None)]
+        if HIP_COMP:
+            define_macros += [('WITH_HIP', None)]
+            define_macros += [('__HIP_PLATFORM_HCC__', None)]
         nvcc_flags = os.getenv('NVCC_FLAGS', '')
         if nvcc_flags == '':
             nvcc_flags = []
         else:
             nvcc_flags = nvcc_flags.split(' ')
+        hipcc_flags=[]
         extra_compile_args = {
             'cxx': [],
             'nvcc': nvcc_flags,
+            'hipcc': hipcc_flags,
         }
 
     if sys.platform == 'win32':

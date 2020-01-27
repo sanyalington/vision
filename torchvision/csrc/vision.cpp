@@ -2,7 +2,9 @@
 #include <torch/script.h>
 
 #ifdef WITH_CUDA
+#ifndef WITH_HIP
 #include <cuda.h>
+#endif
 #endif
 
 #include "DeformConv.h"
@@ -33,7 +35,11 @@ PyMODINIT_FUNC PyInit__C(void) {
 
 int64_t _cuda_version() {
 #ifdef WITH_CUDA
+#ifdef WITH_HIP
+  return 1;
+#else
   return CUDA_VERSION;
+#endif
 #else
   return -1;
 #endif
